@@ -431,7 +431,7 @@ let currentJudgeIndex = 0, judgeScore = 0, judgeAnswered = false;
 let conversationHistory = []; // 对话历史（用于后端）
 
 // 后端API地址
-const BACKEND_URL = 'const BACKEND_URL = 'https://gujian-backend-production.up.railway.app/api/chat';
+const BACKEND_URL = 'const BACKEND_URL = 'gujian-backend-production.up.railway.app';
 
 // ========== 辅助函数 ==========
 function showToast(msg) { let t = document.getElementById('toastMsg'); t.textContent = msg; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2200); }
