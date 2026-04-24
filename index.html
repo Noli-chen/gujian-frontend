@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>古建智览——中华古民居自然科学成就AI交互可视化 | 后端AI助手</title>
+    <!-- 字体与图标 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f5efe6; color: #2c2b28; overflow-x: hidden; scroll-behavior: smooth; }
+        .navbar { position: fixed; top: 0; width: 100%; background: rgba(44,43,40,0.95); backdrop-filter: blur(10px); z-index: 1000; padding: 0.8rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #d4bf9a; transition: all 0.4s; }
+        .navbar.scrolled { padding: 0.5rem 2rem; background: rgba(44,43,40,0.98); }
+        .logo { font-size: 1.5rem; font-weight: 700; color: #ecd9b4; }
+        .logo span { color: #d9a13b; font-weight: 800; }
+        .logo i { color: #d9a13b; margin-right: 6px; transition: transform 0.3s; }
+        .logo:hover i { transform: rotate(10deg) scale(1.1); }
+        .nav-links { display: flex; gap: 1.8rem; }
+        .nav-links a { color: #f0e2ce; text-decoration: none; font-weight: 500; cursor: pointer; position: relative; padding: 0.3rem 0; transition: all 0.3s; }
+        .nav-links a::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background: #e6b45e; transition: width 0.3s; }
+        .nav-links a:hover { color: #e6b45e; transform: translateY(-2px); }
+        .nav-links a:hover::after { width: 100%; }
+        .gene-search-container { position: relative; width: 320px; max-width: 100%; margin-left: 1rem; }
+        .gene-search-input { width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: 40px; border: 1px solid #d4bf9a; background: rgba(255,251,240,0.9); font-size: 0.9rem; outline: none; }
+        .gene-search-input:focus { border-color: #d9a13b; box-shadow: 0 0 0 2px rgba(217,161,59,0.2); }
+        .gene-search-icon { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: #8b5a2b; }
+        .gene-search-results { position: absolute; top: 100%; left: 0; width: 100%; max-height: 280px; overflow-y: auto; background: #fffef7; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); margin-top: 0.5rem; z-index: 1001; display: none; }
+        .gene-search-results.active { display: block; }
+        .gene-result-item { padding: 0.8rem 1.2rem; cursor: pointer; border-bottom: 1px solid #f0e2ce; }
+        .gene-result-item:hover { background: #faf1e2; color: #d9a13b; }
+        .hero { margin-top: 70px; background: linear-gradient(135deg, #2b2a27 0%, #5a4a38 100%); color: #fcf7e6; padding: 2rem 2rem 2.5rem; text-align: center; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSBoZWlnaHQ9IjUiIGZpbGw9IiMzMzMzMzA5Ii8+CjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiM0NDQ0NDQwOSIvPgo8L3N2Zz4='); opacity: 0.1; animation: bgMove 20s linear infinite; }
+        @keyframes bgMove { 0% { transform: translate(0,0); } 100% { transform: translate(50px,50px); } }
+        .hero h1 { font-size: 2.4rem; letter-spacing: 3px; font-family: 'Noto Serif SC', serif; animation: fadeUp 0.8s ease forwards; }
+        .hero p { max-width: 700px; margin: 0.8rem auto 0; animation: fadeUp 0.8s ease forwards 0.2s; }
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+        .map-container { max-width: 1300px; margin: 2rem auto; padding: 0 1rem; }
+        .map-title { text-align: center; font-size: 1.5rem; margin-bottom: 1rem; font-weight: 600; color: #4a3420; position: relative; display: inline-block; left: 50%; transform: translateX(-50%); background: rgba(255,248,235,0.7); padding: 0.3rem 1.5rem; border-radius: 50px; backdrop-filter: blur(4px); }
+        .map-title::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 80px; height: 3px; background: linear-gradient(90deg, transparent, #d9a13b, transparent); border-radius: 3px; animation: expand 2s ease infinite alternate; }
+        @keyframes expand { 0% { width: 60px; } 100% { width: 100px; } }
+        #china-map { width: 100%; height: 600px; background: #fffbf5; border-radius: 28px; border: 1px solid #e7dac8; transition: all 0.4s; }
+        #china-map:hover { box-shadow: 0 25px 40px -15px rgba(0,0,0,0.25); transform: translateY(-5px); }
+        .map-tools { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 12px; }
+        .tool-btn { background: #e8ddcf; border: none; padding: 6px 14px; border-radius: 40px; font-weight: 500; font-size: 0.8rem; cursor: pointer; color: #4a3420; transition: all 0.2s; }
+        .tool-btn:hover { background: #d9a13b; color: white; transform: translateY(-2px); }
+        .quick-panel { max-width: 1300px; margin: 1rem auto 0; padding: 0 1rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8rem; }
+        .quick-btn { background: #e8ddcf; border: none; padding: 0.5rem 1.2rem; border-radius: 40px; font-weight: 500; color: #4a3420; cursor: pointer; transition: all 0.3s; font-size: 0.85rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        .quick-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
+        .quick-btn:hover { background: #d9a13b; color: white; transform: translateY(-2px) scale(1.02); }
+        .quick-btn:hover::before { left: 100%; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 9999; display: flex; justify-content: center; align-items: center; visibility: hidden; opacity: 0; transition: all 0.4s; }
+        .modal-overlay.active { visibility: visible; opacity: 1; }
+        .modal-content { background: #fffef7; width: 92%; max-width: 1100px; max-height: 90vh; border-radius: 32px; overflow-y: auto; box-shadow: 0 40px 60px rgba(0,0,0,0.3); }
+        .modal-header { background: linear-gradient(135deg, #4a3420, #6d4f32); color: #ffefcf; padding: 1.5rem 2rem; border-radius: 32px 32px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { font-family: 'Noto Serif SC', serif; font-size: 1.6rem; display: flex; align-items: center; gap: 12px; margin: 0; }
+        .modal-icon-small { width: 44px; height: 44px; background: linear-gradient(135deg, #d9c5a7, #b88b5a); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+        .close-modal { background: rgba(255,255,255,0.1); border: none; font-size: 1.8rem; color: #ffefcf; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; transition: all 0.3s; }
+        .close-modal:hover { transform: rotate(90deg); background: rgba(255,255,255,0.2); }
+        .modal-body { padding: 2rem; }
+        .section-title { font-weight: 700; color: #4a3420; font-size: 1.1rem; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px; }
+        .section-title::before { content: ''; width: 6px; height: 20px; background: #d9a13b; border-radius: 4px; }
+        .modal-desc { font-size: 1rem; line-height: 1.9; color: #2c2b28; margin-bottom: 16px; text-align: justify; background: #faf8f2; padding: 18px 20px; border-radius: 20px; border-left: 6px solid #d9a13b; }
+        .game-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #e7dac8; padding-bottom: 10px; flex-wrap: wrap; }
+        .game-tab { padding: 10px 20px; background: transparent; border: none; font-weight: 600; color: #7f6b55; cursor: pointer; border-radius: 30px 30px 0 0; transition: all 0.2s; }
+        .game-tab.active { background: #d9a13b; color: white; }
+        .game-tab:hover:not(.active) { background: #f0e2ce; }
+        .game-container { min-height: 400px; }
+        .game-panel { display: none; }
+        .game-panel.active { display: block; }
+        .linkgame-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 500px; margin: 0 auto; }
+        .link-card { aspect-ratio: 1; background: #faf1e2; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 500; cursor: pointer; border: 2px solid #e7dac8; transition: all 0.2s; padding: 8px; text-align: center; }
+        .link-card.selected { border: 3px solid #d9a13b; background: #f5e6d3; }
+        .link-card.matched { opacity: 0.4; pointer-events: none; background: #d4bf9a; text-decoration: line-through; }
+        .guess-game-area { text-align: center; }
+        .guess-clue { background: #faf1e2; padding: 30px; border-radius: 20px; margin-bottom: 20px; font-size: 1.2rem; }
+        .guess-options { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
+        .guess-option-btn { background: #e8ddcf; border: none; padding: 12px 24px; border-radius: 40px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .guess-option-btn:hover { background: #d9a13b; color: white; }
+        .quiz-game-area { padding: 10px; }
+        .quiz-question { background: #fff; border-radius: 20px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid #d9a13b; }
+        .quiz-option { display: flex; align-items: center; gap: 12px; padding: 10px 15px; background: #f5efe6; border-radius: 12px; cursor: pointer; }
+        .quiz-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
+        .quiz-submit, .quiz-reset { padding: 12px 32px; border-radius: 40px; font-weight: 600; cursor: pointer; border: none; }
+        .quiz-submit { background: linear-gradient(135deg, #d9a13b, #e6b45e); color: #2c2b28; }
+        .quiz-reset { background: #e8ddcf; color: #4a3420; }
+        .quiz-result { margin-top: 1.5rem; background: #faf1e2; border-radius: 24px; display: none; }
+        .quiz-result.active { display: block; }
+        .score-card { text-align: center; padding: 25px; background: linear-gradient(135deg, #4a3420, #6d4f32); border-radius: 20px; color: #ffefcf; }
+        .score-number { font-size: 3rem; font-weight: 800; color: #ffd700; }
+        .judge-game-area { text-align: center; }
+        .judge-question-card { background: #faf1e2; border-radius: 24px; padding: 30px; margin-bottom: 25px; }
+        .judge-statement { font-size: 1.25rem; line-height: 1.6; margin-bottom: 25px; }
+        .judge-buttons { display: flex; gap: 20px; justify-content: center; }
+        .judge-true, .judge-false { padding: 15px 40px; border: none; border-radius: 50px; font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: all 0.2s; }
+        .judge-true { background: #2e7d32; color: white; }
+        .judge-false { background: #c62828; color: white; }
+        .judge-true:hover { background: #1b5e20; transform: scale(1.05); }
+        .judge-false:hover { background: #b71c1c; transform: scale(1.05); }
+        .judge-feedback { margin-top: 20px; font-size: 1.1rem; min-height: 40px; }
+        .judge-score-area { margin-top: 20px; font-size: 1.2rem; }
+        .judge-next-btn { margin-top: 25px; background: #d9a13b; border: none; padding: 12px 30px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; }
+        .ai-chat-box { background: #fff; border-radius: 24px; padding: 22px; margin-top: 28px; border: 1px solid #e7dac8; }
+        .ai-chat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+        .ai-avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #d9a13b, #e6b45e); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; }
+        .ai-question-input { width: 100%; padding: 14px 18px; border: 1px solid #e7dac8; border-radius: 18px; outline: none; margin-bottom: 14px; font-size: 0.95rem; }
+        .ai-question-input:focus { border-color: #d9a13b; }
+        .ai-keywords { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        .ai-keyword { background: #f0e2ce; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; color: #4a3420; }
+        .ai-keyword:hover { background: #d9a13b; color: white; }
+        .ai-send-btn { background: #d9a13b; color: white; border: none; padding: 12px 22px; border-radius: 18px; cursor: pointer; font-weight: 600; }
+        .ai-send-btn:hover { background: #c48e2f; transform: translateY(-2px); }
+        .ai-answer-box { background: #faf1e2; padding: 18px; border-radius: 18px; margin-top: 14px; display: none; line-height: 1.7; }
+        .ai-answer-box.active { display: block; }
+        .speak-icon { margin-left: 12px; cursor: pointer; font-size: 1.3rem; transition: all 0.3s; }
+        .speak-icon:hover { color: #e6b45e; transform: scale(1.1); }
+        .ai-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin: 20px 0; }
+        .ai-info-item { background: #faf1e2; padding: 20px; border-radius: 20px; border-left: 5px solid #d9a13b; transition: all 0.3s; }
+        .ai-info-item:hover { transform: translateY(-4px); }
+        .ai-info-item h4 { color: #8b5a2b; margin-bottom: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .ai-info-item p { font-size: 0.95rem; color: #4a3420; line-height: 1.7; }
+        .interaction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 24px 0; }
+        .interact-card { background: #faf8f2; border-radius: 22px; padding: 22px 18px; border: 1px solid #e7dac8; transition: all 0.2s; box-shadow: 0 6px 12px rgba(0,0,0,0.02); }
+        .interact-card:hover { transform: translateY(-4px); box-shadow: 0 16px 24px -8px rgba(0,0,0,0.12); border-color: #d9a13b; }
+        .interact-card i { font-size: 2rem; color: #d9a13b; margin-bottom: 14px; }
+        .interact-card h4 { font-size: 1.1rem; margin-bottom: 16px; color: #4a3420; display: flex; align-items: center; gap: 8px; }
+        .quiz-mini-option { background: #fff; border-radius: 14px; padding: 12px 14px; margin: 10px 0; cursor: pointer; border: 1px solid #e7dac8; font-size: 0.9rem; transition: all 0.2s; }
+        .quiz-mini-option:hover { background: #f0e2ce; border-color: #d9a13b; }
+        .quiz-mini-feedback { font-size: 0.85rem; margin-top: 12px; min-height: 32px; color: #2c2b28; }
+        .fact-box { background: #fff8e7; border-radius: 16px; padding: 18px; font-size: 0.95rem; line-height: 1.6; margin: 15px 0; border-left: 5px solid #d9a13b; }
+        .refresh-btn { background: none; border: 1px dashed #d9a13b; border-radius: 40px; padding: 8px 18px; font-size: 0.85rem; cursor: pointer; color: #8b5a2b; margin-top: 10px; font-weight: 500; display: inline-block; }
+        .refresh-btn:hover { background: #d9a13b20; }
+        .feature-step { margin: 12px 0; padding: 10px; background: #fff; border-radius: 12px; border: 1px solid #e7dac8; }
+        .feature-progress { width: 100%; height: 6px; background: #e7dac8; border-radius: 3px; margin: 10px 0; }
+        .feature-progress-bar { height: 6px; background: #d9a13b; border-radius: 3px; width: 0%; transition: width 0.3s; }
+        .feature-btn { background: #e8ddcf; border: none; padding: 6px 14px; border-radius: 20px; margin-right: 8px; margin-top: 6px; cursor: pointer; font-size: 0.8rem; }
+        .feature-btn:hover { background: #d9a13b; color: white; }
+        .compare-select-group { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+        .compare-select { flex: 1; padding: 12px; border-radius: 16px; border: 1px solid #d4bf9a; background: #fff; }
+        .compare-btn { background: #d9a13b; color: white; border: none; padding: 12px 24px; border-radius: 16px; cursor: pointer; font-weight: 600; }
+        .compare-result { margin-top: 24px; display: none; }
+        .compare-result.active { display: block; }
+        .compare-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 16px; overflow: hidden; }
+        .compare-table th { background: #d9a13b; color: white; padding: 12px; text-align: center; }
+        .compare-table td { padding: 12px; border-bottom: 1px solid #f0e2ce; vertical-align: top; }
+        .compare-left { background: #faf1e2; font-weight: 500; width: 25%; }
+        .ai-assistant { position: fixed; bottom: 30px; right: 30px; z-index: 10001; }
+        .assistant-circle { width: 65px; height: 65px; background: linear-gradient(135deg, #d9a13b, #e6b45e); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.25); cursor: pointer; animation: float 3s ease-in-out infinite; }
+        .assistant-circle i { font-size: 2rem; color: #2c2b28; }
+        .assistant-circle:hover { transform: scale(1.1); }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        .assistant-panel { position: absolute; bottom: 80px; right: 0; width: 360px; background: #fffef7; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); overflow: hidden; display: none; flex-direction: column; max-height: 520px; }
+        .assistant-panel.open { display: flex; }
+        .assistant-header { background: linear-gradient(135deg, #4a3420, #6d4f32); color: #ffefcf; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .assistant-messages { height: 280px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: #faf8f2; }
+        .assistant-message { padding: 10px 14px; border-radius: 16px; max-width: 85%; font-size: 0.85rem; word-break: break-word; }
+        .assistant-user { background: #0078ff; color: white; align-self: flex-end; }
+        .assistant-ai { background: #e8ddcf; color: #4a3420; align-self: flex-start; border-left: 3px solid #d9a13b; }
+        .assistant-input-area { display: flex; padding: 12px; gap: 8px; border-top: 1px solid #e7dac8; background: white; }
+        .assistant-input { flex: 1; padding: 10px 14px; border-radius: 30px; border: 1px solid #e7dac8; outline: none; font-size: 0.85rem; }
+        .assistant-send { background: #d9a13b; border: none; border-radius: 30px; padding: 8px 18px; cursor: pointer; font-weight: 600; color: white; }
+        .assistant-quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-top: 1px solid #e7dac8; background: #fffcf5; }
+        .quick-question { background: #f0e2ce; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; color: #4a3420; transition: 0.2s; }
+        .quick-question:hover { background: #d9a13b; color: white; }
+        .backend-status { background: #f9f3e8; padding: 8px 12px; font-size: 0.7rem; text-align: center; border-top: 1px solid #e7dac8; display: flex; justify-content: space-between; }
+        .status-badge { background: #2e7d3220; border-radius: 12px; padding: 2px 8px; color: #2e7d32; }
+        footer { background: #2b2a27; color: #bfae94; text-align: center; padding: 1.8rem; margin-top: 2rem; }
+        .map-note { text-align: center; font-size: 0.75rem; color: #7f6b55; margin-top: 8px; }
+        .toast-msg { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(44,43,40,0.9); color: #ecd9b4; padding: 10px 22px; border-radius: 40px; z-index: 9998; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .game-btn { background: linear-gradient(135deg, #4a3420, #6d4f32); color: #ffefcf; border: none; padding: 14px 32px; border-radius: 50px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 12px; font-size: 1.1rem; margin: 0 auto 20px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+        .game-btn:hover { transform: translateY(-4px); background: linear-gradient(135deg, #5a3e28, #7d5a3e); box-shadow: 0 12px 28px rgba(0,0,0,0.3); }
+        @media (max-width: 900px) { .interaction-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 700px) { .hero h1 { font-size: 1.6rem; } #china-map { height: 450px; } .navbar { flex-direction: column; gap: 10px; } .gene-search-container { width: 100%; } .assistant-panel { width: 300px; } .linkgame-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+
+<nav class="navbar" id="mainNavbar">
+    <div class="logo"><i class="fas fa-map-marked-alt"></i> 古建智览<span>·AI</span></div>
+    <div class="gene-search-container">
+        <i class="fas fa-search gene-search-icon"></i>
+        <input type="text" class="gene-search-input" id="geneSearchInput" placeholder="搜索省份/特色民居（如：北京、四合院、土楼）">
+        <div class="gene-search-results" id="geneSearchResults"></div>
+    </div>
+    <div class="nav-links">
+        <a onclick="scrollToMap()">🗺️ 中国地图</a>
+        <a onclick="randomBuilding()">🏯 AI随机民居</a>
+        <a onclick="openCompareModal()">⚖️ AI民居对比</a>
+    </div>
+</nav>
+
+<header class="hero">
+    <h1>古建智览——中华古民居自然科学成就AI交互可视化</h1>
+    <p>探索华夏各地特色民居的营造智慧与自然科学成就 | 全新互动体验 · 后端AI智能问答</p>
+</header>
+
+<div class="map-container" id="mapSection">
+    <div class="map-tools">
+        <button class="tool-btn" onclick="resetMapView()"><i class="fas fa-location-arrow"></i> 重置视角</button>
+        <button class="tool-btn" onclick="showMapGuide()"><i class="fas fa-question-circle"></i> 使用指南</button>
+    </div>
+    <div class="map-title"><i class="fas fa-map"></i> 华夏民居 · 智慧版图</div>
+    <div id="china-map"></div>
+    <div class="map-note"><i class="fas fa-hand-pointer"></i> 点击省份查看特色民居介绍，弹窗内新增知识问答与冷知识</div>
+</div>
+
+<div class="quick-panel" id="quickPanel"></div>
+
+<div style="text-align: center; margin: 20px auto;">
+    <button class="game-btn" onclick="openGameCenter()"><i class="fas fa-gamepad"></i> 🎮 民居小游戏中心 | 连连看·猜猜看·知识问答·判断正误</button>
+</div>
+
+<!-- 民居详情弹窗 -->
+<div id="buildingModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>
+                <div class="modal-icon-small" id="modalSmallIcon">🏠</div> 
+                <span id="modalTitle">特色民居详情</span>
+                <i class="fas fa-volume-up speak-icon" id="speakIcon" onclick="aiSpeak()" title="点击语音播报"></i>
+            </h2>
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<!-- AI民居对比弹窗 -->
+<div id="compareModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><div class="modal-icon-small">⚖️</div> AI民居智能对比</h2>
+            <button class="close-modal" onclick="closeCompareModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="section-title">选择两个特色民居进行科学对比</div>
+            <div class="compare-select-group">
+                <select class="compare-select" id="compare1"><option value="">请选择第一个民居</option></select>
+                <select class="compare-select" id="compare2"><option value="">请选择第二个民居</option></select>
+            </div>
+            <button class="compare-btn" onclick="startCompare()">🔍 开始AI对比分析</button>
+            <div class="compare-result" id="compareResult">
+                <div class="section-title">民居对比详情</div>
+                <table class="compare-table">
+                    <tr><th class="compare-left">对比项目</th><th id="c1Name">民居一</th><th id="c2Name">民居二</th></tr>
+                    <tr><td class="compare-left">自然科学智慧</td><td id="c1Science">-</td><td id="c2Science">-</td></tr>
+                    <tr><td class="compare-left">建筑特色</td><td id="c1Feature">-</td><td id="c2Feature">-</td></tr>
+                    <tr><td class="compare-left">民居简介</td><td id="c1Desc">-</td><td id="c2Desc">-</td></tr>
+                    <tr><td class="compare-left">核心标签</td><td id="c1Tags">-</td><td id="c2Tags">-</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 小游戏中心模态框 -->
+<div id="gameCenterModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-gamepad"></i> 民居小游戏中心</h2>
+            <button class="close-modal" onclick="closeGameCenter()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="game-tabs">
+                <button class="game-tab active" onclick="switchGameTab('link')">🔗 连连看 (民居·成就)</button>
+                <button class="game-tab" onclick="switchGameTab('guess')">🤔 猜猜看</button>
+                <button class="game-tab" onclick="switchGameTab('quiz')">❓ 知识问答</button>
+                <button class="game-tab" onclick="switchGameTab('judge')">✅ 判断正误</button>
+            </div>
+            <div class="game-container">
+                <div id="linkGamePanel" class="game-panel active"><h4 style="margin-bottom:15px;">将特色民居与它的自然科学成就配对 (点击一对消除)</h4><div id="linkGameGrid" class="linkgame-grid"></div><div style="margin-top:20px; text-align:center;"><button class="tool-btn" onclick="resetLinkGame()">🔄 重新开始</button></div></div>
+                <div id="guessGamePanel" class="game-panel"><h4 style="margin-bottom:15px;">根据特征猜特色民居</h4><div class="guess-game-area"><div class="guess-clue" id="guessClueText">加载中...</div><div class="guess-options" id="guessOptionsContainer"></div><div class="guess-feedback" id="guessFeedback"></div><button class="tool-btn" onclick="nextGuessQuestion()" style="margin-top:20px;">⏩ 下一题</button></div></div>
+                <div id="quizGamePanel" class="game-panel"><div class="quiz-game-area"><div id="gameQuizQuestionsContainer"></div><div class="quiz-buttons"><button class="quiz-submit" onclick="submitGameQuiz()">提交答案</button><button class="quiz-reset" onclick="resetGameQuiz()">换一组题目</button></div><div class="quiz-result" id="gameQuizResult"></div></div></div>
+                <div id="judgeGamePanel" class="game-panel"><h4 style="margin-bottom:15px;">判断以下民居知识是否正确</h4><div class="judge-game-area"><div class="judge-question-card"><div class="judge-statement" id="judgeStatement">加载题目中...</div><div class="judge-buttons"><button class="judge-true" onclick="answerJudge(true)">✅ 正确</button><button class="judge-false" onclick="answerJudge(false)">❌ 错误</button></div><div class="judge-feedback" id="judgeFeedback"></div></div><div class="judge-score-area">当前得分: <span id="judgeScore">0</span> 分</div><button class="judge-next-btn" onclick="nextJudgeQuestion()">⏩ 下一题</button><button class="tool-btn" onclick="resetJudgeGame()" style="margin-left:10px;">🔄 重新开始</button></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <p>© 2026 古建智览团队 | 兰州理工大学 | 第19届中国大学生计算机设计大赛 · AI交互式地图作品</p>
+    <p><i class="fas fa-dragon"></i> 一方水土一方民居 · 展现中华营造文脉 | 深度简介 · 互动问答 · 冷知识 · 小游戏</p>
+</footer>
+
+<div class="toast-msg" id="toastMsg"></div>
+
+<!-- 右下角AI小助手（已修改为调用后端） -->
+<div class="ai-assistant">
+    <div class="assistant-circle" id="assistantToggle">
+        <i class="fas fa-robot"></i>
+    </div>
+    <div class="assistant-panel" id="assistantPanel">
+        <div class="assistant-header" id="assistantHeaderClose">
+            <span><i class="fas fa-robot"></i> 古建AI大模型助手</span>
+            <span><i class="fas fa-times"></i> 收起</span>
+        </div>
+        <div class="assistant-messages" id="assistantMessages">
+            <div class="assistant-message assistant-ai">🤖 你好！我已连接到后端AI服务。直接问我关于民居的任何问题吧！</div>
+        </div>
+        <div class="assistant-quick">
+            <span class="quick-question" onclick="askQuickQuestion('四合院有什么科学智慧？')">🏯 四合院智慧</span>
+            <span class="quick-question" onclick="askQuickQuestion('福建土楼为什么抗震？')">🗼 土楼抗震</span>
+            <span class="quick-question" onclick="askQuickQuestion('窑洞为什么冬暖夏凉？')">🔨 窑洞原理</span>
+            <span class="quick-question" onclick="askQuickQuestion('吊脚楼如何防潮？')">🌊 吊脚楼防潮</span>
+        </div>
+        <div class="assistant-input-area">
+            <input type="text" class="assistant-input" id="assistantInput" placeholder="输入你的问题...">
+            <button class="assistant-send" onclick="askAssistant()">发送</button>
+        </div>
+        <div class="backend-status">
+            <span>🔗 后端地址: http://localhost:3000</span>
+            <span class="status-badge" id="backendStatus">检测中...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== 全国34个省份对应的特色民居数据（完整） ====================
+const provinceBuildingData = {
+    "北京": { name: "北京四合院", icon: "🏠", desc: "北京四合院是中国北方合院式民居的典范，由正房、厢房、倒座房围合而成，形成封闭私密的院落空间。其自然科学成就：院落布局利于采光通风，影壁阻挡寒风，屋顶排水巧妙，木构架抗震性强，体现了天人合一的居住智慧。", tags: ["合院","砖木结构"], science: "院落微气候调节、采光通风、木构抗震", feature: "四方围合、青砖灰瓦" },
+    "天津": { name: "石家大院", icon: "🏘️", desc: "天津杨柳青石家大院是清末华北民居的瑰宝，砖木结构，院中有院，砖雕精美。科学智慧：防潮地基、火炕取暖系统、院落排水设计，体现了北方大宅的舒适与实用。", tags: ["大院","砖雕"], science: "防潮地基、火炕取暖、排水系统", feature: "津门豪宅、砖雕艺术" },
+    "河北": { name: "太行山石板房", icon: "🏚️", desc: "河北井陉太行山区的石板房以天然青石板为瓦，石块砌墙，冬暖夏凉。科学智慧：石材导热系数小，保温隔热；厚重墙体防风沙；石板搭接防水耐用。", tags: ["石屋","山区"], science: "石材热惰性、防水搭接、重力稳定", feature: "石墙石瓦、古朴坚固" },
+    "山西": { name: "晋商大院", icon: "🏯", desc: "山西晋商大院（如乔家大院）是北方民居建筑的经典，城堡式布局，高墙厚瓦，木雕、砖雕精美。科学成就：地下窑洞粮仓恒温恒湿；窄巷防火；建筑群防风防沙。", tags: ["大院","晋商"], science: "地下窑洞恒温、防火巷设计", feature: "深宅大院、雕梁画栋" },
+    "内蒙古": { name: "蒙古包", icon: "🏕️", desc: "蒙古包是蒙古族传统毡房，圆形穹顶，木架结构，毛毡覆盖。科学智慧：圆形结构抗风；毛毡隔热保暖；拆装便捷适应游牧生活；烟囱排烟流畅。", tags: ["毡房","游牧"], science: "圆形抗风、毛毡保温、可拆卸体系", feature: "天窗采光、迁徙家园" },
+    "辽宁": { name: "满族口袋房", icon: "🏠", desc: "满族传统民居口袋房，三合院或四合院，西侧开门，形似口袋，内设万字炕。科学智慧：万字炕连通灶台，一火暖全屋；西侧开门防风；火墙循环供暖。", tags: ["满族","火炕"], science: "火炕循环采暖、防风布局", feature: "万字炕、口袋形制" },
+    "吉林": { name: "朝鲜族民居", icon: "🏡", desc: "吉林延边朝鲜族民居，矮屋火炕，歇山屋顶，白墙木柱。科学智慧：满屋火炕取暖；低矮建筑减少散热；木地板架空防潮；屋顶坡度大利排水。", tags: ["朝鲜族","火炕"], science: "火炕取暖、架空防潮、排水坡度", feature: "白墙木骨、温突文化" },
+    "黑龙江": { name: "木刻楞", icon: "🏚️", desc: "黑龙江俄罗斯族木刻楞民居，全木结构，圆木叠垒，墙角交叉咬合。科学智慧：木材保温性强；圆木间填苔藓防风；基础防冻胀处理；适合严寒气候。", tags: ["木屋","俄式"], science: "木构保温、苔藓密封、防冻地基", feature: "原木叠垒、童话风格" },
+    "上海": { name: "石库门里弄", icon: "🏘️", desc: "上海石库门是中西合璧的里弄民居，黑色木门配花岗岩门框，联排布局。科学智慧：天井通风采光；山墙防火墙；密集布局节约土地。", tags: ["里弄","近代"], science: "天井通风、防火山墙、土地集约", feature: "石库门、弄堂文化" },
+    "江苏": { name: "江南水乡民居", icon: "🏯", desc: "江苏周庄、同里等水乡民居，临水而建，粉墙黛瓦，驳岸码头。科学智慧：枕河取水排水；封火墙防火；花格窗通风；木柱防潮石础。", tags: ["水乡","砖木"], science: "水陆循环、防潮石础、通风散热", feature: "小桥流水、枕河人家" },
+    "浙江": { name: "浙东天井院", icon: "🏠", desc: "浙江传统天井式民居，窄天井高围墙，内向开敞。科学智慧：天井形成拔风效应；高墙遮阳；石雕排水口美观实用。", tags: ["天井","砖雕"], science: "拔风通风、遮阳隔热、排水艺术", feature: "四水归堂、精雕细刻" },
+    "安徽": { name: "徽派民居", icon: "🏯", desc: "安徽宏村西递徽派民居，粉墙黛瓦马头墙，天井院落。科学智慧：马头墙防火；天井采光排水；木雕防潮；水圳系统调节微气候。", tags: ["徽派","天井"], science: "马头墙防火、水圳生态、天井排水", feature: "粉墙黛瓦、一生痴绝" },
+    "福建": { name: "福建土楼", icon: "🏯", desc: "福建客家土楼，圆形或方形夯土建筑，厚墙小窗。科学智慧：夯土配比科学，抗震性极强；环形受力均匀；生土保温隔热；防卫与聚居合一。", tags: ["土楼","夯土"], science: "夯土力学、环形抗震、热工优异", feature: "圆楼方楼、聚族而居" },
+    "江西": { name: "赣派天井民居", icon: "🏘️", desc: "江西流坑村赣派民居，天井采光，砖木结构，青砖灰瓦。科学智慧：天井拔风排湿；砖墙防火；木构架柔性抗震；排水暗渠巧妙。", tags: ["天井","砖木"], science: "天井排湿、砖砌防火、暗渠排水", feature: "理学名村、青砖灰瓦" },
+    "山东": { name: "海草房", icon: "🏚️", desc: "山东胶东海草房，以海草为顶，石块砌墙，厚实低矮。科学智慧：海草防腐隔热；石块墙体防风；大坡度屋顶利排水；适应沿海多风环境。", tags: ["海草","沿海"], science: "海草防腐、石墙防风、坡顶排水", feature: "童话小屋、生态建筑" },
+    "河南": { name: "地坑院", icon: "🕳️", desc: "河南陕州地坑院，下沉式窑洞，挖坑为院，凿洞为房。科学智慧：黄土力学稳定；冬暖夏凉；地下防风防尘；排水渗井系统。", tags: ["窑洞","下沉"], science: "黄土力学、地温恒温、渗井排水", feature: "地下村落、见树不见村" },
+    "湖北": { name: "土家吊脚楼", icon: "🏚️", desc: "湖北恩施土家族吊脚楼，依山而建，下层架空。科学智慧：架空防潮防虫；穿斗式木构抗震；悬挑阳台利用地形。", tags: ["吊脚楼","土家"], science: "架空防潮、穿斗抗震、地形适应", feature: "半干栏、依山傍水" },
+    "湖南": { name: "湘西吊脚楼", icon: "🏯", desc: "湖南湘西凤凰吊脚楼，临水悬空，青瓦木墙。科学智慧：木桩基础适应水位变化；通风防潮；翘角飞檐排水迅速。", tags: ["吊脚楼","苗族"], science: "木桩基础、通风防潮、排水飞檐", feature: "临水悬空、苗疆风情" },
+    "广东": { name: "广府镬耳屋", icon: "🏘️", desc: "广东广府镬耳屋，山墙形似镬耳，青砖石脚。科学智慧：镬耳山墙挡风防火；天井通风散热；蚝壳墙防潮耐用。", tags: ["广府","镬耳"], science: "镬耳防火挡风、天井通风、蚝壳防潮", feature: "镬耳山墙、岭南韵致" },
+    "广西": { name: "壮族干栏", icon: "🏚️", desc: "广西壮族干栏式民居，底层架空，上层住人。科学智慧：防潮防兽；通风散热；竹木结构轻巧抗震。", tags: ["干栏","壮族"], science: "底层架空防潮、竹木抗震、自然通风", feature: "人栖上层、畜居下层" },
+    "海南": { name: "黎族船形屋", icon: "🏠", desc: "海南黎族船形屋，拱形屋顶似船篷，茅草盖顶。科学智慧：拱顶抗风；茅草隔热；低矮减少受风面积；适应台风气候。", tags: ["茅草","黎族"], science: "拱形抗风、茅草隔热、低矮结构", feature: "船形屋、非遗技艺" },
+    "重庆": { name: "巴渝吊脚楼", icon: "🏘️", desc: "重庆沿江吊脚楼，依山悬挑，木柱支撑。科学智慧：山地适应；穿斗结构稳固；竹木墙板轻质通风。", tags: ["吊脚楼","山地"], science: "悬挑力学、穿斗抗震、山地适应", feature: "山城符号、临江而建" },
+    "四川": { name: "川西林盘", icon: "🌳", desc: "四川川西林盘，院落与竹林、水系结合，散居田间。科学智慧：林盘调节小气候；水系灌溉防火；建筑朝向避西晒。", tags: ["林盘","田园"], science: "生态微气候、水系防火、朝向遮阳", feature: "竹林掩映、田园栖居" },
+    "贵州": { name: "苗族吊脚楼", icon: "🏯", desc: "贵州西江千户苗寨吊脚楼，依山叠建，青瓦木楼。科学智慧：叠层减重；穿斗结构；排烟通风；石材地基稳固。", tags: ["苗寨","吊脚楼"], science: "穿斗抗震、叠层减荷、石材地基", feature: "千户苗寨、层层叠叠" },
+    "云南": { name: "一颗印民居", icon: "🏠", desc: "云南一颗印，正房厢房连成一体，高墙小窗，形似印章。科学智慧：厚土墙隔热；小天井拔风；屋顶雨水收集；抗震性强。", tags: ["一颗印","夯土"], science: "土墙隔热、小天井通风、雨水收集", feature: "方正紧凑、高墙防盗" },
+    "西藏": { name: "藏族碉房", icon: "🕌", desc: "西藏碉房，石砌墙体，平顶小窗，厚实如碉堡。科学智慧：收分墙体抗震；石墙保温；平顶晾晒；适应高寒气候。", tags: ["碉房","石砌"], science: "收分墙体抗震、石墙保温、平顶利用", feature: "碉楼风格、高原之舟" },
+    "陕西": { name: "陕北窑洞", icon: "🕳️", desc: "陕西黄土高原窑洞，靠山或下沉，拱形结构。科学智慧：黄土力学拱券；地热恒温；防风固沙；生土建筑零能耗。", tags: ["窑洞","生土"], science: "拱券力学、地温恒温、土体保温", feature: "冬暖夏凉、原生地貌" },
+    "甘肃": { name: "陇南土坯房", icon: "🏚️", desc: "甘肃陇南土坯房，夯土墙，木屋架，单坡顶。科学智慧：夯土配比；厚墙保温；单坡聚水；适应干旱气候。", tags: ["土坯","夯土"], science: "夯土保温、单坡集水、木材节约", feature: "黄土本色、朴实无华" },
+    "青海": { name: "庄廓院", icon: "🏘️", desc: "青海河湟庄廓院，方形高墙，土木结构，内为合院。科学智慧：高墙防风沙；厚土坯保温；院内绿化调节微气候。", tags: ["庄廓","合院"], science: "高墙防风、土坯保温、院内生态", feature: "高墙深院、河湟人家" },
+    "宁夏": { name: "回族高房子", icon: "🏠", desc: "宁夏回族高房子，平顶土坯，檐廊宽大。科学智慧：厚墙隔热；檐廊遮阳；屋顶晾晒；适应大陆性气候。", tags: ["回族","土坯"], science: "厚墙隔热、檐廊遮阳、平顶晾晒", feature: "回族风情、宽檐廊" },
+    "新疆": { name: "阿以旺", icon: "🕌", desc: "新疆维吾尔族阿以旺民居，中央大厅高起，四面房间。科学智慧：高侧窗通风；厚墙隔热；土坯砌筑；地下葡萄窖恒温。", tags: ["维吾尔","生土"], science: "高侧窗通风、厚墙隔热、地窖恒温", feature: "阿以旺厅、彩色雕花" },
+    "香港": { name: "客家围村", icon: "🏘️", desc: "香港新界客家围村，如曾大屋，夯土围墙，四角炮楼。科学智慧：夯土防御；排水沟渠；祠堂居中凝聚；适应湿热气候。", tags: ["围村","客家"], science: "夯土防卫、排水系统、宗祠核心", feature: "围村堡垒、客家传承" },
+    "澳门": { name: "中式大屋", icon: "🏠", desc: "澳门郑家大屋，中西合璧，天井院落，青砖墙。科学智慧：天井通风；木构架；灰塑排水；适应亚热带海洋气候。", tags: ["大屋","中西"], science: "天井通风、灰塑防水、木构抗震", feature: "中西融合、书香门第" },
+    "台湾": { name: "三合院", icon: "🏘️", desc: "台湾传统三合院，正身护龙，红砖红瓦。科学智慧：红砖隔热；院埕排水；护龙挡风；屋顶压檐抗台风。", tags: ["三合院","闽南"], science: "红砖隔热、压檐抗风、院埕排水", feature: "红砖红瓦、家族聚落" }
+};
+
+// 冷知识库
+const coldFacts = [
+    "北京四合院的大门通常开在东南角，寓意“紫气东来”。", "福建土楼曾被美国卫星误认为是核导弹发射井。", "陕北窑洞的拱形结构早在几千年前就被用于生土建筑。", "蒙古包的圆形设计抗风能力极强，能抵御10级大风。", "吊脚楼的下层架空可以防止野兽爬入和潮气侵蚀。", "地坑院被称为“地下四合院”，见树不见村，进村不见房。", "海草房的海草屋顶可耐腐蚀、防虫蛀，使用百年不坏。", "徽派马头墙最初是为了防火，隔断火势蔓延。"
+];
+
+// 特征探秘数据
+const featureClues = {
+    "北京四合院": ["这是北方传统合院式民居", "由正房、厢房、倒座房围合而成", "大门开在东南角，影壁防风煞"],
+    "福建土楼": ["圆形或方形夯土建筑", "主要分布在闽西南山区", "墙体厚达1.5米，抗震性极强"],
+    "陕北窑洞": ["黄土高原上的生土建筑", "冬暖夏凉，不需要空调暖气", "拱形结构力学稳定"],
+    "蒙古包": ["圆形毡房，木架毛毡", "便于拆卸运输", "天窗采光排烟"]
+};
+const defaultClues = ["这是中国一种特色民居", "它适应了当地自然环境", "蕴含丰富的科学智慧"];
+
+// 知识问答库
+const miniQuizBank = {
+    "北京四合院": [{ q: "北京四合院的大门通常开在哪个方位？", options: ["正南", "东南", "西南", "西北"], correct: 1 }],
+    "福建土楼": [{ q: "福建土楼的主要建造材料是？", options: ["青砖", "木材", "生土", "石块"], correct: 2 }],
+    "陕北窑洞": [{ q: "窑洞最突出的优点是？", options: ["抗震", "防火", "冬暖夏凉", "防潮"], correct: 2 }],
+    "蒙古包": [{ q: "蒙古包顶部留天窗的主要作用是？", options: ["采光排烟", "装饰", "进出", "军事瞭望"], correct: 0 }],
+    "吊脚楼": [{ q: "吊脚楼底层架空的主要目的是？", options: ["防潮防兽", "储物", "饲养家畜", "美观"], correct: 0 }],
+    "徽派民居": [{ q: "徽派建筑的马头墙主要功能是？", options: ["防火", "装饰", "挡风", "防盗"], correct: 0 }],
+    "地坑院": [{ q: "地坑院主要分布在哪一地区？", options: ["山西", "陕西", "河南", "甘肃"], correct: 2 }],
+    "海草房": [{ q: "海草房的屋顶材料是？", options: ["稻草", "海草", "石板", "瓦片"], correct: 1 }]
+};
+
+// 连连看数据
+const buildingAchievements = [
+    { name: "北京四合院", achievement: "合院布局·采光防风" }, { name: "福建土楼", achievement: "夯土抗震·环形受力" },
+    { name: "陕北窑洞", achievement: "黄土拱券·冬暖夏凉" }, { name: "蒙古包", achievement: "圆形抗风·可拆装" },
+    { name: "徽派民居", achievement: "马头墙防火·天井排水" }, { name: "吊脚楼", achievement: "架空防潮·穿斗抗震" },
+    { name: "地坑院", achievement: "地下恒温·渗井排水" }, { name: "海草房", achievement: "海草防腐·石墙防风" }
+];
+
+// 猜猜看数据
+const guessQuestions = [
+    { clue: "它是北方合院民居典范，大门开在东南角", answer: "北京四合院", options: ["北京四合院", "晋商大院", "徽派民居", "三合院"] },
+    { clue: "圆形或方形夯土建筑，主要分布在闽西南", answer: "福建土楼", options: ["福建土楼", "开平碉楼", "围龙屋", "赣派民居"] },
+    { clue: "黄土高原上的生土建筑，冬暖夏凉", answer: "陕北窑洞", options: ["陕北窑洞", "地坑院", "陇南土坯房", "庄廓院"] },
+    { clue: "便于拆卸运输的圆形毡房", answer: "蒙古包", options: ["蒙古包", "帐篷", "毡房", "木刻楞"] },
+    { clue: "下层架空防潮防虫，依山而建", answer: "吊脚楼", options: ["吊脚楼", "干栏式", "竹楼", "土家吊脚楼"] }
+];
+
+// 知识问答游戏库
+const gameQuizDB = [
+    { question: "北京四合院的大门通常开在哪个方向？", options: ["正南", "东南", "西北", "正北"], correct: 1 },
+    { question: "福建土楼的主要建筑材料是？", options: ["青砖", "木材", "生土", "石块"], correct: 2 },
+    { question: "以下哪种民居被誉为‘地下四合院’？", options: ["窑洞", "地坑院", "庄廓院", "土楼"], correct: 1 },
+    { question: "蒙古包的圆形设计主要优势是？", options: ["美观", "抗风", "采光", "保温"], correct: 1 },
+    { question: "吊脚楼底层架空的主要目的是？", options: ["防潮防兽", "饲养家畜", "储物", "美观"], correct: 0 },
+    { question: "徽派民居的马头墙最初功能是？", options: ["装饰", "防火", "防盗", "挡风"], correct: 1 }
+];
+
+// 判断正误数据
+const judgeQuestions = [
+    { statement: "北京四合院的大门通常开在正南方。", isTrue: false },
+    { statement: "福建土楼曾被美国卫星误认为是导弹发射井。", isTrue: true },
+    { statement: "陕北窑洞的拱形结构利用了黄土力学。", isTrue: true },
+    { statement: "蒙古包的圆形设计不利于抗风。", isTrue: false },
+    { statement: "吊脚楼下层架空是为了防潮防虫。", isTrue: true },
+    { statement: "徽派马头墙主要起装饰作用，没有防火功能。", isTrue: false },
+    { statement: "地坑院主要分布在陕西关中地区。", isTrue: false },
+    { statement: "海草房的屋顶海草能防腐隔热。", isTrue: true }
+];
+
+// ========== 全局变量 ==========
+let myChart = null, isSpeaking = false, currentModalProvince = null;
+let currentModalData = null, currentQuizIndex = 0, currentClueStep = 0, currentClues = [];
+let linkCards = [], selectedIndex = -1, matchedCount = 0;
+let currentGuessIndex = 0;
+let gameQuizQuestions = [], gameUserAnswers = [];
+let currentJudgeIndex = 0, judgeScore = 0, judgeAnswered = false;
+let conversationHistory = []; // 对话历史（用于后端）
+
+// 后端API地址
+const BACKEND_URL = 'const BACKEND_URL = 'https://gujian-backend-production.up.railway.app/api/chat';
+
+// ========== 辅助函数 ==========
+function showToast(msg) { let t = document.getElementById('toastMsg'); t.textContent = msg; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2200); }
+function getRandomFact() { return coldFacts[Math.floor(Math.random() * coldFacts.length)]; }
+
+// 检查后端健康状态
+async function checkBackendHealth() {
+    const statusSpan = document.getElementById('backendStatus');
+    try {
+        const res = await fetch('http://localhost:3000/api/health');
+        if (res.ok) {
+            statusSpan.innerHTML = '✅ 后端在线';
+            statusSpan.style.color = '#2e7d32';
+        } else {
+            statusSpan.innerHTML = '⚠️ 后端异常';
+            statusSpan.style.color = '#c62828';
+        }
+    } catch(e) {
+        statusSpan.innerHTML = '❌ 后端未启动';
+        statusSpan.style.color = '#c62828';
+        console.warn('后端连接失败，请确保后端已运行在 http://localhost:3000');
+    }
+}
+
+// 发送消息到后端AI
+async function callBackendAI(userMessage) {
+    conversationHistory.push({ role: 'user', content: userMessage });
+    if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
+    try {
+        const response = await fetch(BACKEND_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: conversationHistory })
+        });
+        const data = await response.json();
+        if (data.reply) {
+            conversationHistory.push({ role: 'assistant', content: data.reply });
+            return data.reply;
+        } else {
+            return '抱歉，后端返回错误：' + (data.error || '未知错误');
+        }
+    } catch (error) {
+        console.error('后端调用失败:', error);
+        return '无法连接到后端服务，请确保后端已启动（node server.js）并运行在 http://localhost:3000';
+    }
+}
+
+// 添加消息到对话框
+function addMessage(text, sender) {
+    const container = document.getElementById('assistantMessages');
+    const div = document.createElement('div');
+    div.className = `assistant-message ${sender === 'user' ? 'assistant-user' : 'assistant-ai'}`;
+    div.textContent = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+// AI助手发送消息
+window.askAssistant = async function() {
+    const input = document.getElementById('assistantInput');
+    const userMsg = input.value.trim();
+    if (!userMsg) { showToast('请输入问题'); return; }
+    addMessage(userMsg, 'user');
+    input.value = '';
+    const thinkingDiv = document.createElement('div');
+    thinkingDiv.className = 'assistant-message assistant-ai';
+    thinkingDiv.textContent = '🤔 正在思考...';
+    document.getElementById('assistantMessages').appendChild(thinkingDiv);
+    const reply = await callBackendAI(userMsg);
+    thinkingDiv.remove();
+    addMessage(reply, 'ai');
+};
+
+window.askQuickQuestion = function(question) {
+    document.getElementById('assistantInput').value = question;
+    askAssistant();
+};
+
+// ========== 地图与弹窗功能 ==========
+function initChinaMap() {
+    const dom = document.getElementById('china-map');
+    myChart = echarts.init(dom);
+    myChart.setOption({ backgroundColor:'#fffbf5', series:[{ type:'map', mapType:'china', roam:true, label:{show:true}, itemStyle:{areaColor:'#f5efe6'}, emphasis:{itemStyle:{areaColor:'#d9a13b'}} }] });
+    myChart.on('click', (p) => { if(provinceBuildingData[p.name]) openBuildingModal(p.name); });
+    window.chinaMapInstance = myChart;
+}
+
+window.openBuildingModal = function(province) {
+    const data = provinceBuildingData[province];
+    if (!data) return;
+    currentModalProvince = province;
+    currentModalData = data;
+    const quizList = miniQuizBank[data.name] || [{ q: `${data.name}位于哪个省份？`, options: [province, "北京", "上海", "广东"], correct: 0 }];
+    currentQuizIndex = Math.floor(Math.random() * quizList.length);
+    const currentQuiz = quizList[currentQuizIndex];
+    currentClues = featureClues[data.name] || [...defaultClues];
+    currentClueStep = 0;
+    const progressPercent = ((currentClueStep + 1) / currentClues.length) * 100;
+    document.getElementById('modalSmallIcon').textContent = data.icon;
+    document.getElementById('modalTitle').textContent = `${province} · ${data.name}`;
+    const modalHtml = `
+        <div class="modal-desc" id="descContent">${data.desc}</div>
+        <div class="section-title"><i class="fas fa-flask"></i> 科学智慧解析</div>
+        <div class="ai-info-grid">
+            <div class="ai-info-item"><h4><i class="fas fa-lightbulb"></i> 自然科学智慧</h4><p>${data.science}</p></div>
+            <div class="ai-info-item"><h4><i class="fas fa-paint-brush"></i> 建筑特色</h4><p>${data.feature}</p></div>
+        </div>
+        <div class="section-title"><i class="fas fa-robot"></i> AI智能问答</div>
+        <div class="ai-chat-box">
+            <div class="ai-chat-header"><div class="ai-avatar"><i class="fas fa-robot"></i></div><div style="font-weight:600">民居AI助手</div></div>
+            <div class="ai-keywords">
+                <span class="ai-keyword" onclick="setAIQuestion('${data.name}的历史背景')">📜 历史背景</span>
+                <span class="ai-keyword" onclick="setAIQuestion('${data.name}的建筑特色')">🏛️ 建筑特色</span>
+                <span class="ai-keyword" onclick="setAIQuestion('${data.name}的科学智慧')">🔬 科学智慧</span>
+                <span class="ai-keyword" onclick="setAIQuestion('${data.name}有什么有趣的故事')">📖 趣闻轶事</span>
+            </div>
+            <input type="text" class="ai-question-input" id="aiQuestion" placeholder="输入你想了解的问题...">
+            <button class="ai-send-btn" onclick="askAI('${province}')"><i class="fas fa-paper-plane"></i> 发送问题</button>
+            <div class="ai-answer-box" id="aiAnswer"></div>
+        </div>
+        <div class="section-title"><i class="fas fa-hand-sparkles"></i> 互动探索</div>
+        <div class="interaction-grid">
+            <div class="interact-card">
+                <i class="fas fa-question-circle"></i>
+                <h4>🔍 知识快问快答</h4>
+                <div style="font-weight:500; margin-bottom:14px;" id="quizQuestionText">${currentQuiz.q}</div>
+                <div id="miniQuizOptions">${currentQuiz.options.map((opt, idx) => `<div class="quiz-mini-option" onclick="checkMiniAnswer(${idx}, ${currentQuiz.correct})">${String.fromCharCode(65+idx)}. ${opt}</div>`).join('')}</div>
+                <div id="miniFeedback" class="quiz-mini-feedback"></div>
+                <button class="refresh-btn" onclick="refreshQuiz()"><i class="fas fa-sync-alt"></i> 换一题</button>
+            </div>
+            <div class="interact-card">
+                <i class="fas fa-lightbulb"></i>
+                <h4>📖 冷知识胶囊</h4>
+                <div id="factDisplay" class="fact-box">${getRandomFact()}</div>
+                <button class="refresh-btn" onclick="refreshFact()"><i class="fas fa-sync-alt"></i> 换一条冷知识</button>
+            </div>
+            <div class="interact-card">
+                <i class="fas fa-search-location"></i>
+                <h4>🔎 特征探秘·逐步诱导</h4>
+                <div id="featureClueDisplay" class="feature-step">
+                    <p><strong>线索 ${currentClueStep+1}/${currentClues.length}:</strong> <span id="clueTextSpan">${currentClues[currentClueStep]}</span></p>
+                </div>
+                <div class="feature-progress"><div class="feature-progress-bar" id="clueProgress" style="width: ${progressPercent}%;"></div></div>
+                <button class="feature-btn" onclick="nextClue()">🔓 下一个线索</button>
+                <button class="feature-btn" onclick="resetClues()">🔄 重新探索</button>
+                <button class="feature-btn" onclick="revealAnswer()">🏯 揭晓答案</button>
+                <div id="featureAnswer" style="margin-top:12px;"></div>
+            </div>
+        </div>
+    `;
+    document.getElementById('modalBody').innerHTML = modalHtml;
+    document.getElementById('buildingModal').classList.add('active');
+    showToast(`✨ 正在浏览 ${province} · ${data.name}`);
+};
+
+window.setAIQuestion = (q) => { document.getElementById('aiQuestion').value = q; };
+window.checkMiniAnswer = (selectedIdx, correctIdx) => {
+    const fb = document.getElementById('miniFeedback');
+    const isCorrect = (selectedIdx === correctIdx);
+    fb.innerHTML = isCorrect ? '✅ 回答正确！' : `❌ 正确答案是 ${String.fromCharCode(65+correctIdx)}。`;
+    fb.style.color = isCorrect ? '#2e7d32' : '#c62828';
+};
+window.refreshQuiz = () => {
+    const data = currentModalData;
+    const quizList = miniQuizBank[data.name] || [{ q: `${data.name}位于哪个省份？`, options: [currentModalProvince, "北京", "上海", "广东"], correct: 0 }];
+    currentQuizIndex = (currentQuizIndex + 1) % quizList.length;
+    const newQuiz = quizList[currentQuizIndex];
+    document.getElementById('quizQuestionText').textContent = newQuiz.q;
+    document.getElementById('miniQuizOptions').innerHTML = newQuiz.options.map((opt, idx) => `<div class="quiz-mini-option" onclick="checkMiniAnswer(${idx}, ${newQuiz.correct})">${String.fromCharCode(65+idx)}. ${opt}</div>`).join('');
+    document.getElementById('miniFeedback').innerHTML = '';
+};
+window.refreshFact = () => { document.getElementById('factDisplay').textContent = getRandomFact(); };
+window.nextClue = () => { if (currentClueStep < currentClues.length - 1) { currentClueStep++; updateClueDisplay(); } else showToast('已经是最后一条线索了！'); };
+window.resetClues = () => { currentClueStep = 0; updateClueDisplay(); };
+window.revealAnswer = () => { document.getElementById('featureAnswer').innerHTML = `<strong>🏆 答案揭晓：${currentModalData.name}</strong><br>${currentModalData.desc.substring(0,80)}...`; };
+function updateClueDisplay() { const progress = ((currentClueStep + 1) / currentClues.length) * 100; document.getElementById('clueTextSpan').textContent = currentClues[currentClueStep]; document.getElementById('clueProgress').style.width = progress + '%'; document.querySelector('#featureClueDisplay p strong').innerHTML = `线索 ${currentClueStep+1}/${currentClues.length}:`; document.getElementById('featureAnswer').innerHTML = ''; }
+window.askAI = async function(province) {
+    const question = document.getElementById('aiQuestion').value.trim();
+    const answerBox = document.getElementById('aiAnswer');
+    if (!question) { showToast('请输入问题'); return; }
+    answerBox.classList.add('active');
+    answerBox.innerHTML = '🤖 AI 正在思考……';
+    // 调用后端API获取答案
+    const reply = await callBackendAI(`关于${provinceBuildingData[province].name}：${question}`);
+    answerBox.innerHTML = reply;
+    showToast('AI 已回复');
+};
+window.aiSpeak = () => {
+    if (isSpeaking) { speechSynthesis.cancel(); isSpeaking = false; return; }
+    const desc = currentModalData ? currentModalData.desc : document.getElementById('descContent')?.innerText || '';
+    if (!desc) return;
+    const utterance = new SpeechSynthesisUtterance(desc);
+    utterance.lang = 'zh-CN';
+    utterance.onend = () => { isSpeaking = false; };
+    speechSynthesis.speak(utterance);
+    isSpeaking = true;
+    showToast('🔊 语音播报中...');
+};
+window.closeModal = () => { speechSynthesis.cancel(); isSpeaking = false; document.getElementById('buildingModal').classList.remove('active'); };
+
+// ========== 对比功能 ==========
+window.openCompareModal = () => {
+    const s1 = document.getElementById('compare1'), s2 = document.getElementById('compare2');
+    s1.innerHTML = s2.innerHTML = '<option value="">请选择民居</option>';
+    Object.keys(provinceBuildingData).forEach(p => {
+        const opt = `<option value="${p}">${p} · ${provinceBuildingData[p].name}</option>`;
+        s1.innerHTML += opt;
+        s2.innerHTML += opt;
+    });
+    document.getElementById('compareModal').classList.add('active');
+};
+window.closeCompareModal = () => document.getElementById('compareModal').classList.remove('active');
+window.startCompare = () => {
+    const p1 = document.getElementById('compare1').value, p2 = document.getElementById('compare2').value;
+    if(!p1 || !p2) { showToast('请选择两个民居'); return; }
+    const d1 = provinceBuildingData[p1], d2 = provinceBuildingData[p2];
+    document.getElementById('c1Name').textContent = d1.name;
+    document.getElementById('c2Name').textContent = d2.name;
+    document.getElementById('c1Science').textContent = d1.science;
+    document.getElementById('c2Science').textContent = d2.science;
+    document.getElementById('c1Feature').textContent = d1.feature;
+    document.getElementById('c2Feature').textContent = d2.feature;
+    document.getElementById('c1Desc').textContent = d1.desc.substring(0,60)+'…';
+    document.getElementById('c2Desc').textContent = d2.desc.substring(0,60)+'…';
+    document.getElementById('c1Tags').textContent = d1.tags.join('、');
+    document.getElementById('c2Tags').textContent = d2.tags.join('、');
+    document.getElementById('compareResult').classList.add('active');
+};
+
+// ========== 连连看游戏 ==========
+function shuffleArray(arr) { for (let i=arr.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+function initLinkGame() {
+    let items = [];
+    buildingAchievements.forEach((b, idx) => {
+        items.push({ type: 'name', value: b.name, pairId: idx });
+        items.push({ type: 'achievement', value: b.achievement, pairId: idx });
+    });
+    linkCards = shuffleArray(items);
+    matchedCount = 0;
+    selectedIndex = -1;
+    renderLinkGrid();
+}
+function renderLinkGrid() {
+    const grid = document.getElementById('linkGameGrid');
+    grid.innerHTML = linkCards.map((card, i) => {
+        let classes = 'link-card';
+        if (card.matched) classes += ' matched';
+        if (selectedIndex === i) classes += ' selected';
+        return `<div class="${classes}" onclick="handleLinkClick(${i})">${card.value}</div>`;
+    }).join('');
+}
+window.handleLinkClick = (idx) => {
+    if (linkCards[idx].matched) return;
+    if (selectedIndex === -1) { selectedIndex = idx; renderLinkGrid(); return; }
+    if (selectedIndex === idx) { selectedIndex = -1; renderLinkGrid(); return; }
+    const card1 = linkCards[selectedIndex], card2 = linkCards[idx];
+    if (card1.pairId === card2.pairId && card1.type !== card2.type) {
+        card1.matched = card2.matched = true;
+        matchedCount += 2;
+        selectedIndex = -1;
+        renderLinkGrid();
+        if (matchedCount === linkCards.length) showToast('🎉 恭喜！所有配对成功！');
+    } else {
+        selectedIndex = -1;
+        renderLinkGrid();
+        showToast('❌ 配对失败');
+    }
+};
+window.resetLinkGame = () => initLinkGame();
+
+// ========== 猜猜看游戏 ==========
+function loadGuessQuestion() {
+    const q = guessQuestions[currentGuessIndex % guessQuestions.length];
+    document.getElementById('guessClueText').textContent = q.clue;
+    document.getElementById('guessOptionsContainer').innerHTML = q.options.map(opt => `<button class="guess-option-btn" onclick="checkGuessAnswer('${opt}', '${q.answer}')">${opt}</button>`).join('');
+    document.getElementById('guessFeedback').textContent = '';
+}
+window.checkGuessAnswer = (selected, correct) => {
+    const fb = document.getElementById('guessFeedback');
+    fb.innerHTML = selected === correct ? '✅ 正确！' : `❌ 正确答案是 ${correct}`;
+};
+window.nextGuessQuestion = () => { currentGuessIndex++; loadGuessQuestion(); };
+
+// ========== 知识问答游戏 ==========
+function initGameQuiz() { gameQuizQuestions = shuffleArray([...gameQuizDB]).slice(0,5); gameUserAnswers = new Array(5).fill(null); renderGameQuiz(); }
+function renderGameQuiz() {
+    let html = '';
+    gameQuizQuestions.forEach((q, i) => {
+        html += `<div class="quiz-question"><div>${i+1}. ${q.question}</div><div class="quiz-options">`;
+        q.options.forEach((opt, oi) => html += `<div class="quiz-option" onclick="selectGameQuizOption(${i},${oi})"><input type="radio" name="gq${i}" ${gameUserAnswers[i]===oi?'checked':''}> ${String.fromCharCode(65+oi)}. ${opt}</div>`);
+        html += `</div></div>`;
+    });
+    document.getElementById('gameQuizQuestionsContainer').innerHTML = html;
+}
+window.selectGameQuizOption = (qIdx, optIdx) => { gameUserAnswers[qIdx] = optIdx; };
+window.submitGameQuiz = () => {
+    let correct = 0;
+    gameQuizQuestions.forEach((q, i) => { if (gameUserAnswers[i] === q.correct) correct++; });
+    document.getElementById('gameQuizResult').innerHTML = `<div class="score-card"><div class="score-number">${correct*20}<span>/100</span></div></div>`;
+    document.getElementById('gameQuizResult').classList.add('active');
+};
+window.resetGameQuiz = () => { initGameQuiz(); document.getElementById('gameQuizResult').classList.remove('active'); };
+
+// ========== 判断正误游戏 ==========
+function initJudgeGame() { currentJudgeIndex = 0; judgeScore = 0; judgeAnswered = false; document.getElementById('judgeScore').textContent = judgeScore; loadJudgeQuestion(); }
+function loadJudgeQuestion() {
+    const q = judgeQuestions[currentJudgeIndex % judgeQuestions.length];
+    document.getElementById('judgeStatement').textContent = q.statement;
+    document.getElementById('judgeFeedback').innerHTML = '';
+    judgeAnswered = false;
+    document.getElementById('judgeGamePanel').dataset.currentAnswer = q.isTrue;
+}
+window.answerJudge = (userAnswer) => {
+    if (judgeAnswered) { showToast('本题已作答，进入下一题吧'); return; }
+    const correct = document.getElementById('judgeGamePanel').dataset.currentAnswer === 'true';
+    const fb = document.getElementById('judgeFeedback');
+    judgeAnswered = true;
+    if (userAnswer === correct) { judgeScore += 10; fb.innerHTML = '✅ 回答正确！ +10分'; fb.style.color = '#2e7d32'; document.getElementById('judgeScore').textContent = judgeScore; showToast('🎉 判断正确！'); }
+    else { fb.innerHTML = `❌ 回答错误。正确答案是 ${correct ? '正确' : '错误'}。`; fb.style.color = '#c62828'; }
+};
+window.nextJudgeQuestion = () => { currentJudgeIndex++; loadJudgeQuestion(); };
+window.resetJudgeGame = () => { initJudgeGame(); };
+
+// ========== 游戏中心 ==========
+window.openGameCenter = () => {
+    document.getElementById('gameCenterModal').classList.add('active');
+    initLinkGame();
+    loadGuessQuestion();
+    initGameQuiz();
+    initJudgeGame();
+};
+window.closeGameCenter = () => document.getElementById('gameCenterModal').classList.remove('active');
+window.switchGameTab = (tabId) => {
+    document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
+    const tabMap = { 'link':0, 'guess':1, 'quiz':2, 'judge':3 };
+    const idx = tabMap[tabId] || 0;
+    document.querySelectorAll('.game-tab')[idx].classList.add('active');
+    document.querySelectorAll('.game-panel')[idx].classList.add('active');
+};
+
+// ========== 导航与工具 ==========
+window.scrollToMap = () => document.getElementById('mapSection').scrollIntoView({behavior:'smooth'});
+window.resetMapView = () => { if(window.chinaMapInstance) window.chinaMapInstance.dispatchAction({ type: 'restore' }); };
+window.randomBuilding = () => { const arr=Object.keys(provinceBuildingData); openBuildingModal(arr[Math.floor(Math.random()*arr.length)]); };
+window.showMapGuide = () => showToast('点击省份查看特色民居');
+
+// 搜索框
+document.getElementById('geneSearchInput').addEventListener('input', function(e) {
+    const kw = e.target.value.trim().toLowerCase();
+    const resDiv = document.getElementById('geneSearchResults');
+    if(!kw) { resDiv.classList.remove('active'); return; }
+    const matches = Object.entries(provinceBuildingData).filter(([p,d])=> p.toLowerCase().includes(kw) || d.name.toLowerCase().includes(kw));
+    if(matches.length){
+        resDiv.innerHTML = matches.map(([p,d])=>`<div class="gene-result-item" onclick="openBuildingModal('${p}'); document.getElementById('geneSearchResults').classList.remove('active');">${p} · ${d.name}</div>`).join('');
+        resDiv.classList.add('active');
+    } else { resDiv.innerHTML='<div class="gene-result-item">未找到</div>'; resDiv.classList.add('active'); }
+});
+
+// 助手开关
+document.getElementById('assistantToggle').addEventListener('click',()=>document.getElementById('assistantPanel').classList.toggle('open'));
+document.getElementById('assistantHeaderClose').addEventListener('click',()=>document.getElementById('assistantPanel').classList.remove('open'));
+
+// 页面加载
+window.onload = () => {
+    initChinaMap();
+    checkBackendHealth();
+    showToast('🏮 后端AI助手已就绪，直接提问即可！');
+    setInterval(checkBackendHealth, 30000);
+};
+</script>
+</body>
+</html>
